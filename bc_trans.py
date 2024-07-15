@@ -9,14 +9,15 @@ import numpy as np
 import time
 
 # 参数
-root_dir = r'/home/zjm/Workspace/imitation_learning/hit_false'
+root_dir = r'/home/zjm/Workspace/imitation_learning/hit_false'# 为数据文件夹路径
+test_root_dir = './hit_true'  # 为测试数据文件夹路径
 checkpoint_root_path= r"./checkpoints/"
-state_dim = 6
-missile_dim = 6
-input_dim = 12
+state_dim = 6 # 飞机状态量的维度
+missile_dim = 6  # 导弹状态量的维度
+input_dim = state_dim + missile_dim  # 总的输入维度
 sequence_length = 100
 total_input_dim = input_dim * sequence_length
-action_dim = 3
+action_dim = 3  # 控制量的维度，nx、ny、γ
 output_dim = sequence_length * action_dim
 batch_size = 512
 num_epochs = 150
@@ -24,6 +25,7 @@ learning_rate = 0.001
 checkpoint_path = os.path.join(checkpoint_root_path, 'checkpoint.pth')
 model_path = './result/BC_model_Transformer_batch512_epoach150_001.pth'
 
+# 检查GPU是否可用，并默认设置为显卡0
 device = torch.device('cuda:5' if torch.cuda.is_available() else 'cpu')
 # 如果目录不存在，则创建目录
 os.makedirs(os.path.dirname(model_path), exist_ok=True)
@@ -95,8 +97,9 @@ class TransformerModel(nn.Module):
 
 def train_model(model, dataloader, criterion, optimizer, num_epochs, device, checkpoint_pat,writer):
     model.to(device)
-    start_time = time.time()
+    start_time = time.time()#方便查询时间
 
+    # Check if a checkpoint exists and load it
     start_epoch = 0
     best_loss = float('inf')
     if os.path.isfile(checkpoint_path):
@@ -144,12 +147,14 @@ def train_model(model, dataloader, criterion, optimizer, num_epochs, device, che
             }
             torch.save(checkpoint, checkpoint_path)
             print(f'保存新的最佳模型检查点，损失值: {best_loss:.4f}')
-
+    # 关闭 TensorBoard writer
     writer.close()
 
 
 def main(mode='train', state_input=None):
+    # Initialize the criterion
     criterion = nn.MSELoss()
+    # TensorBoard writer
     writer = SummaryWriter(log_dir='runs/behavior_cloning_experiment') 
 
     if mode == 'train':
