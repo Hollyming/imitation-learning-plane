@@ -50,7 +50,7 @@ def predict_control(model, state, device):
     control = control.cpu().numpy().squeeze()
     return control
 
-
+# Runge-Kutta 4阶积分
 def rK4_step(state, derivs, dt, params=None, time_invariant=True, t=0):
     # One step of time-invariant RK4 integration
     if params is not None:
@@ -168,7 +168,7 @@ class Flight(object):
 
         return self.x, self.y, self.z, self.vel, self.theta, self.phi
 
-
+# 计算目标的初始瞄准角度
 def acquisition(target_pos):
     """
     Sets initial heading and climb angle to LOS angles, better ensuring a collision
@@ -245,18 +245,16 @@ def get_seeker_state(target_state, missile_state):
                      VT_inert[0] - VM_inert[0], VT_inert[1] - VM_inert[1], VT_inert[2] - VM_inert[2]])
 
 def proportional_navigation(seeker_state):
+    # 拆分为相对位置和速度
     relative_pos = np.array([seeker_state[0], seeker_state[1], seeker_state[2]])
     relative_vel = np.array([seeker_state[3], seeker_state[4], seeker_state[5]])
-
-    # 计算期望的加速度
+    # 计算相对位置向量的模长
     norm_relative_pos = np.linalg.norm(relative_pos)
-
     # 防止除以零
     if norm_relative_pos == 0:
         raise ValueError("Relative position norm is zero, cannot compute desired acceleration.")
-
+    #计算期望加速度
     desired_acceleration = 5 * np.cross(relative_vel, np.cross(relative_pos, relative_vel)) / norm_relative_pos ** 2
-
     return desired_acceleration
 
 #设置初始条件，运行模拟循环，直到导弹命中目标或条件不满足。返回目标和导弹的轨迹以及是否命中的标志。
@@ -269,15 +267,36 @@ def limit_speed(state, max_speed):
     """
     speed = state[3]
     if speed > max_speed:
-        factor = max_speed / speed
+        factor = max_speed / speed#计算因子调整速度
         state[3] *= factor
     return state
 
 def update_lines(num, target_data, missile_data, line_target, line_missile):
-    line_target.set_data([target_data[:num, 0], target_data[:num,1]])
+    """
+    更新目标线和导弹线的数据。
+    
+    这个函数用于在3D图形中更新目标和导弹的位置。它通过修改line_target和line_missile对象的数据，
+    来反映target_data和missile_data中最新的位置信息。只更新前num个数据点，以提高更新效率或应对大量数据的情况。
+    
+    参数:
+    num -- 更新的数据点数量。
+    target_data -- 目标的位置数据，包括x、y、z坐标。
+    missile_data -- 导弹的位置数据，包括x、y、z坐标。
+    line_target -- 表示目标的线对象。
+    line_missile -- 表示导弹的线对象。
+    
+    返回:
+    line_target -- 更新后的目标线对象。
+    line_missile -- 更新后的导弹线对象。
+    """
+    # 更新目标线的数据
+    line_target.set_data([target_data[:num, 0], target_data[:num, 1]])
     line_target.set_3d_properties(target_data[:num, 2])
-    line_missile.set_data([missile_data[:num, 0], missile_data[:num,1]])
+    
+    # 更新导弹线的数据
+    line_missile.set_data([missile_data[:num, 0], missile_data[:num, 1]])
     line_missile.set_3d_properties(missile_data[:num, 2])
+    
     return line_target, line_missile
 
 def prediction(mode='predict', state_input=None):
@@ -329,10 +348,10 @@ def load_first_n_lines(file_path, num_lines=1):
     return data
 
 def main():
-
-
-    flight_pos_file = r"C:\Users\28208\Desktop\data_eight\data\hit_false\run_3\current_flight_pos.txt"
-    missile_sim_file = r"C:\Users\28208\Desktop\data_eight\data\hit_false\run_3\missile_sim.txt"
+    # flight_pos_file = r"C:\Users\28208\Desktop\data_eight\data\hit_false\run_3\current_flight_pos.txt"
+    # missile_sim_file = r"C:\Users\28208\Desktop\data_eight\data\hit_false\run_3\missile_sim.txt"
+    flight_pos_file = r".\hit_false\run_3\current_flight_pos.txt"
+    missile_sim_file = r".\hit_false\run_3\missile_sim.txt"
 
     state_input = prepare_input(flight_pos_file, missile_sim_file)
     print("Predicted state_input output shape:", state_input.shape)
@@ -365,8 +384,6 @@ def main():
     missile_accel = missile.missile_accel
 
     while distance > eps:
-
-
         fly = []
         miss = []
         exit_loop = False  # 添加标志变量
@@ -406,8 +423,6 @@ def main():
 
         state_input = prepare_input_2(fly, miss)
         control_output = prediction(state_input=state_input)
-
-
     current_flight_pos = np.array(current_flight_pos)
     missile_sim = np.array(missile_sim)
     print("Point:", iteration_count)
